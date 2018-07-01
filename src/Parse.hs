@@ -17,26 +17,30 @@ false = string "false" *> return False
 bool :: Parser Bool
 bool = true <|> false
 
+tokenEnd :: Parser Char
+tokenEnd = noneOf " )"
+
 aint :: Parser Atom
-aint = AInt <$> int
+aint = AInt <$> int <* notFollowedBy tokenEnd
 
 abool :: Parser Atom
-abool = ABool <$> bool
+abool = ABool <$> bool <* notFollowedBy tokenEnd
 
 astring :: Parser Atom
 astring = AString <$> many1 alphaNum
 
 atom :: Parser Atom
-atom = aint <|> abool <|> astring
+atom = choice [try aint, try abool, astring]
 
 satom :: Parser SExpr
 satom = SAtom <$> atom
 
+spaces1 :: Parser Char
+spaces1 = space <* spaces
+
 slist :: Parser SExpr
 slist = SList <$> between (char '(') (char ')')
-        (many $ (satom <|> slist) <* spaces)
+        (sepBy1 (satom <|> slist) spaces1)
 
--- TODO: fix 3s true1 ..
--- parseTest sexp "(1 2 sdf1 3s (1 true1))"
 sexp :: Parser SExpr
 sexp = slist <|> satom
