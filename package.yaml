@@ -24,6 +24,8 @@ dependencies:
 - parsec
 - bytestring
 - parsec3-numbers
+- data-default
+- containers
 
 library:
   source-dirs: src
