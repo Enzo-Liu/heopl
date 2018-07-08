@@ -1,14 +1,15 @@
 module Lang.Let where
 
-import Text.Parsec
-import Text.Parsec.ByteString
-import Text.Parsec.Number
-import Data.Default
-import Data.Map.Strict(Map, (!), insert)
+import           Data.Default
+import           Data.Map.Strict        (Map, insert, (!))
+import           Text.Parsec
+import           Text.Parsec.ByteString
+import           Text.Parsec.Number
 
 newtype Identity = Identity String deriving (Show, Eq, Ord)
 data Expr = ENum Int
           | EDiff Expr Expr
+          | EMinus Int
           | EZero Expr
           | EIf Expr Expr Expr
           | EVar Identity
@@ -37,6 +38,9 @@ keyParser key a = string key >> spaces *> a <* spaces
 keyExpr :: String -> Parser Expr
 keyExpr key = keyParser key expr
 
+eminus :: Parser Expr
+eminus = string "minus" >> spaces >> brackets (EMinus <$> int)
+
 ezero :: Parser Expr
 ezero = string "zero?" >> spaces >> brackets (EZero <$> expr)
 
@@ -50,7 +54,14 @@ elet = ELet <$> keyParser "let" (Identity <$> many1 letter) <*>
 -- parseTest expr "-(55, -(x,11))"
 -- parseTest expr "let z = 5 in let x = 3 in let y = -(x,1) in let x = 4 in -(z, -(x,y))"
 expr :: Parser Expr
-expr = choice [try enum, try ediff, try ezero, try eif, try elet, evar]
+expr = choice [ try enum
+              , try ediff
+              , try ezero
+              , try eif
+              , try elet
+              , try eminus
+              , evar
+              ]
 
 
 newtype Env = Env (Map Identity Val) deriving (Show, Eq)
@@ -69,6 +80,7 @@ evalEnv env (EDiff e1 e2) =
   let (ValI i1) = evalEnv env e1
       (ValI i2) = evalEnv env e2
   in ValI (i1 - i2)
+evalEnv _ (EMinus i) = ValI (-i)
 evalEnv env (EZero e) =
   if ValI 0 == evalEnv env e then ValB True else ValB False
 
