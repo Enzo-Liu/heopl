@@ -9,6 +9,9 @@ import           Text.Parsec.Number
 newtype Identity = Identity String deriving (Show, Eq, Ord)
 data Expr = ENum Int
           | EDiff Expr Expr
+          | EAdd Expr Expr
+          | EMul Expr Expr
+          | EQuot Expr Expr
           | EMinus Int
           | EZero Expr
           | EIf Expr Expr Expr
@@ -26,8 +29,20 @@ brackets :: Parser a -> Parser a
 brackets = between (char '(') (char ')')
 
 ediff :: Parser Expr
-ediff = char '-' >> spaces >> brackets
-  (EDiff <$> expr <* spaces <* char ',' <* spaces <*> expr)
+ediff = op '-' EDiff
+
+eadd :: Parser Expr
+eadd = op '+' EAdd
+
+emul :: Parser Expr
+emul = op '*' EMul
+
+equot :: Parser Expr
+equot = op '/' EQuot
+
+op :: Char -> (Expr -> Expr -> Expr) -> Parser Expr
+op c operator = char c >> spaces >> brackets
+  (operator <$> expr <* spaces <* char ',' <* spaces <*> expr)
 
 eif :: Parser Expr
 eif = EIf <$> keyExpr "if" <*> keyExpr "then" <*> keyExpr "else"
@@ -56,6 +71,9 @@ elet = ELet <$> keyParser "let" (Identity <$> many1 letter) <*>
 expr :: Parser Expr
 expr = choice [ try enum
               , try ediff
+              , try eadd
+              , try emul
+              , try equot
               , try ezero
               , try eif
               , try elet
@@ -74,12 +92,23 @@ instance Default Env where
 eval :: Expr -> Val
 eval = evalEnv def
 
-evalEnv :: Env -> Expr -> Val
-evalEnv _ (ENum i) = ValI i
-evalEnv env (EDiff e1 e2) =
+type OP = Int -> Int -> Int
+apply :: Env -> OP -> Expr -> Expr -> Val
+apply env operator e1 e2 =
   let (ValI i1) = evalEnv env e1
       (ValI i2) = evalEnv env e2
-  in ValI (i1 - i2)
+  in ValI (operator i1 i2)
+
+evalEnv :: Env -> Expr -> Val
+evalEnv _ (ENum i) = ValI i
+evalEnv env (EDiff e1 e2) = apply env (-) e1 e2
+
+evalEnv env (EAdd e1 e2) = apply env (+) e1 e2
+
+evalEnv env (EMul e1 e2) = apply env (*) e1 e2
+
+evalEnv env (EQuot e1 e2) = apply env quot e1 e2
+
 evalEnv _ (EMinus i) = ValI (-i)
 evalEnv env (EZero e) =
   if ValI 0 == evalEnv env e then ValB True else ValB False
