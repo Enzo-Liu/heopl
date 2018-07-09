@@ -12,7 +12,7 @@ data Expr = ENum Int
           | EAdd Expr Expr
           | EMul Expr Expr
           | EQuot Expr Expr
-          | EMinus Int
+          | EMinus Expr
           | EZero Expr
           | EIf Expr Expr Expr
           | EVar Identity
@@ -54,7 +54,7 @@ keyExpr :: String -> Parser Expr
 keyExpr key = keyParser key expr
 
 eminus :: Parser Expr
-eminus = string "minus" >> spaces >> brackets (EMinus <$> int)
+eminus = string "minus" >> spaces >> brackets (EMinus <$> expr)
 
 ezero :: Parser Expr
 ezero = string "zero?" >> spaces >> brackets (EZero <$> expr)
@@ -108,8 +108,7 @@ evalEnv env (EAdd e1 e2) = apply env (+) e1 e2
 evalEnv env (EMul e1 e2) = apply env (*) e1 e2
 
 evalEnv env (EQuot e1 e2) = apply env quot e1 e2
-
-evalEnv _ (EMinus i) = ValI (-i)
+evalEnv env (EMinus e) = let (ValI i) = evalEnv env e in ValI (-i)
 evalEnv env (EZero e) =
   if ValI 0 == evalEnv env e then ValB True else ValB False
 
