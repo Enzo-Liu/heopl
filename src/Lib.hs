@@ -23,3 +23,16 @@ maxProdOfList = flip foldr (0,1,1) $
         newLastMax = maximum choices
         newLastMin = minimum choices
         newMax = max allMax newLastMax in (newMax, newLastMax, newLastMin)
+
+composable :: String -> String -> String -> Bool
+composable "" "" "" = True
+composable "" bs cs = bs == cs
+composable as "" cs = as == cs
+composable s1@(a:as) s2@(b:bs) (c:cs)
+  | a == c && b == c = consumeA || consumeB
+  | a == c = consumeA
+  | b == c = consumeB
+  | otherwise = False
+  where consumeA = composable as s2 cs
+        consumeB = composable s1 bs cs
+composable _ _ _ = False
